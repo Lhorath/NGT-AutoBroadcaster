@@ -205,6 +205,11 @@ NGT-AutoBroadcaster/
 │   └── Models.cs
 ├── examples/
 │   └── NGT_Autobroadcaster.cfg
+├── legacy/
+│   └── 1.0.1/
+│       ├── README.md
+│       ├── CHANGELOG.md
+│       └── manifest.json
 ├── manifest.json
 ├── LocalPaths.props.example
 ├── NGT.AutoBroadcaster.csproj

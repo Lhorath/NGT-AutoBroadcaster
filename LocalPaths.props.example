@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- Dedicated-server paths, recommended for a server-side build. -->
+    <ValheimManaged>C:\Path\To\Valheim dedicated server\valheim_server_Data\Managed</ValheimManaged>
+    <BepInExCore>C:\Path\To\Valheim dedicated server\BepInEx\core</BepInExCore>
+  </PropertyGroup>
+</Project>

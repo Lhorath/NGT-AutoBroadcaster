@@ -1,0 +1,19 @@
+# Build output
+bin/
+obj/
+
+# Local machine paths / IDE
+LocalPaths.props
+.vs/
+.idea/
+*.user
+*.suo
+
+# Compiled plugin / packages
+*.dll
+*.pdb
+*.zip
+
+# OS files
+.DS_Store
+Thumbs.db

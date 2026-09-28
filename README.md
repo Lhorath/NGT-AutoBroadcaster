@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="icon.png" alt="NGT AutoBroadcaster" width="256" height="256">
-</p>
-
 # Nerdy Gamer Tools AutoBroadcaster
 
 **Version 2.0.0** — Valheim **1.0.16** rebuild
@@ -209,7 +205,6 @@ NGT-AutoBroadcaster/
 │   └── Models.cs
 ├── examples/
 │   └── NGT_Autobroadcaster.cfg
-├── icon.png
 ├── manifest.json
 ├── LocalPaths.props.example
 ├── NGT.AutoBroadcaster.csproj

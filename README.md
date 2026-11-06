@@ -1,6 +1,6 @@
 # Nerdy Gamer Tools AutoBroadcaster
 
-**Version 2.0.0** — Valheim **1.0.16** rebuild
+**Version 2.1.0** — Valheim **1.0.20** (network version 41)
 
 A dedicated-server-only scheduled broadcast mod for Valheim. Vanilla clients do not need the mod installed, and the plugin does not add a custom network handshake or disable Valheim crossplay.
 
@@ -11,13 +11,13 @@ This repository preserves the source for the rebuilt AutoBroadcaster so future V
 - Hourly scheduling by minute (`0-59`) for each message.
 - Delivery type per message: `Alert`, `Chat`, or `Both`.
 - Live config reload without restarting the dedicated server.
-- Dedicated-server runtime guard; accidentally installing the DLL on a normal client does nothing.
+- Dedicated-server runtime guard. The plugin runs only when `ZNet` reports a dedicated server, so installing the DLL on a normal client or a listen host does nothing.
 - No custom RPC registration, network handshake, prefab, asset bundle, or client dependency.
 - Uses vanilla Valheim message paths:
   - `ShowMessage` for center-screen alerts.
   - `PlayerList` + `ChatMessage` for optional chat announcements.
 - Keeps the 1.x configuration layout wherever practical.
-- Per-message `Enabled` switch in 2.0.0.
+- Per-message `Enabled` switch.
 
 ## Scheduling
 
@@ -40,13 +40,22 @@ The scheduler uses the dedicated server's local system clock. A message will not
 
 Uses Valheim's vanilla `ShowMessage` routed RPC with `MessageHud.MessageType.Center`.
 
-`MessageTime` controls the requested alert duration. Since the routed vanilla message does not provide a duration argument, durations above roughly two seconds are maintained by refreshing the center alert at two-second intervals, preserving the behavior expected from the older plugin.
+`MessageTime` controls how long the alert should stay up. On Valheim 1.0.20 the center message fades out over about four seconds and the RPC does not take a duration, so values above two seconds are kept visible by sending the same alert again every two seconds.
+
+An alert is not sent when nobody is connected. The BepInEx log records that skip.
 
 ### Chat
 
-Uses Valheim's vanilla player-list and chat messages. Vanilla clients validate chat senders against the current player list, so AutoBroadcaster briefly adds a synthetic non-player identity named `Server`, sends the chat line, and immediately restores the real player list.
+Uses Valheim's vanilla `ChatMessage` RPC. On 1.0.20 a client shows that line only when both of these are true:
 
-The old 1.x `Steam_0` sender/log-suppression workaround is not used by 2.0.0.
+- The sender's platform id is in the player list while the line is displayed.
+- The client's communication permission check accepts that id. A made-up platform string is rejected. A non-Steam id is accepted by the Steam client as a different-platform user.
+
+AutoBroadcaster therefore sends the line as a non-player named `Server` with the platform id `Dedicated_Server`. That identity is added to the player-list packet, the chat line is sent, and the real player list is sent immediately afterward. The identity is taken out of the server's live player list before the send returns, so it does not increase the connected-player count or trip the server-full check.
+
+The old 1.x `Steam_0` sender/log-suppression workaround is not used.
+
+If the player-list anchor cannot be installed, a `Chat` message is delivered as a center alert instead and a warning is written once. `Both` still sends its own alert in that case.
 
 ### Both
 
@@ -61,7 +70,7 @@ AutoBroadcaster is intended to remain **server-side only** and preserve `-crossp
 - The plugin does not add a connection/version handshake.
 - The plugin does not modify the server's crossplay setting.
 
-`Alert` is the simplest compatibility path because it uses the same routed `ShowMessage` mechanism understood by vanilla clients. `Chat` also uses vanilla packets, but mixed-platform chat rendering should be verified on the target server after each major Valheim networking update.
+`Alert` is the simplest compatibility path because it uses the same routed `ShowMessage` mechanism understood by vanilla clients. `Chat` also uses vanilla packets. After a major networking update, confirm on a Steam client and on any crossplay client that the `Server` line appears in chat. A platform that resolves the different-platform permission check asynchronously can drop the chat line; the BepInEx log still records that the server sent it.
 
 ## Configuration
 
@@ -143,12 +152,14 @@ BepInEx/plugins/NGT.AutoBroadcaster/NGT.AutoBroadcaster.dll
 
 No client-side installation is required.
 
-## Building for Valheim 1.0.16
+## Building for Valheim 1.0.20
 
 The project targets `.NET Framework 4.8` and references the assemblies from a local Valheim Dedicated Server/BepInEx installation. Game assemblies are intentionally **not** stored in this repository.
 
-1. Install/update the Valheim Dedicated Server to **1.0.16**.
-2. Install BepInExPack Valheim **5.4.x** on that server installation.
+This tree was compiled against the Valheim **1.0.20** dedicated-server assemblies (the server log reports network version **41**) and BepInExPack Valheim **5.4.2351**. Harmony (`0Harmony.dll`) is referenced from that BepInEx install. It is not a separate Thunderstore dependency.
+
+1. Install/update the Valheim Dedicated Server to **1.0.20**.
+2. Install BepInExPack Valheim **5.4.2351** on that server installation.
 3. Copy `LocalPaths.props.example` to `LocalPaths.props`.
 4. Set:
    - `ValheimManaged` to `<server>/valheim_server_Data/Managed`
@@ -165,11 +176,17 @@ Output:
 bin/Release/NGT.AutoBroadcaster.dll
 ```
 
+Scheduler and config-validation tests do not need the game installed:
+
+```powershell
+dotnet test tests/NGT.AutoBroadcaster.Tests.csproj
+```
+
 `LocalPaths.props`, compiled DLLs, PDBs, build output, and packaged ZIPs are ignored by Git.
 
 ## Migrating from 1.0.1
 
-The previous public package documented these existing keys, all of which remain recognizable in the 2.0.0 rebuild:
+The previous public package documented these existing keys, all of which remain recognizable:
 
 - `[Default Settings] EnableBroadcasting`
 - `[Default Settings] AutoBroadcastCount`
@@ -178,12 +195,14 @@ The previous public package documented these existing keys, all of which remain 
 - `[Message XX] ScheduledMinuteOfHour`
 - `[Message XX] MessageTime`
 
-2.0.0 adds:
+2.0.0 added, and 2.1.0 keeps:
 
 - `[Default Settings] DebugLogging`
 - `[Message XX] Enabled`
 
-The older release also suppressed harmless `Steam_0` player-info log spam caused by its chat-sender workaround. The 2.0.0 source removes that workaround rather than suppressing its log output.
+The older release also suppressed harmless `Steam_0` player-info log spam caused by its chat-sender workaround. Later versions remove that workaround rather than suppressing its log output.
+
+No config migration is required when replacing a 2.0.0 DLL with 2.1.0. Keep the existing `NGT_Autobroadcaster.cfg`.
 
 ### Legacy screenshots
 
@@ -202,7 +221,10 @@ NGT-AutoBroadcaster/
 │   ├── MessageConfigService.cs
 │   ├── MessageScheduler.cs
 │   ├── BroadcastDispatcher.cs
+│   ├── ServerPlayerListAnchor.cs
+│   ├── MessageRules.cs
 │   └── Models.cs
+├── tests/
 ├── examples/
 │   └── NGT_Autobroadcaster.cfg
 ├── legacy/
@@ -216,6 +238,43 @@ NGT-AutoBroadcaster/
 ├── CHANGELOG.md
 └── README.md
 ```
+
+## Troubleshooting
+
+Watch `BepInEx/LogOutput.log` on the dedicated server. These lines are written once at startup, not on every frame:
+
+```text
+[Info   :Nerdy Gamer Tools AutoBroadcaster] Nerdy Gamer Tools AutoBroadcaster 2.1.0 loaded. Waiting for the dedicated server network to become ready.
+[Info   :Nerdy Gamer Tools AutoBroadcaster] AutoBroadcaster ready on the dedicated server. 3 enabled message(s). Vanilla clients do not need this mod.
+[Info   :Nerdy Gamer Tools AutoBroadcaster] Scheduled Message 01 at minute 03 (Alert).
+```
+
+When a message is due and at least one player is connected:
+
+```text
+[Info   :Nerdy Gamer Tools AutoBroadcaster] AutoBroadcaster alert (1 player(s)): Welcome to the server! Be respectful and have fun.
+[Info   :Nerdy Gamer Tools AutoBroadcaster] AutoBroadcaster chat (1 player(s)): Join our Discord to be part of the community.
+```
+
+| What you see | What it means |
+| --- | --- |
+| The load line never appears | BepInEx did not load the DLL. Check `BepInEx/plugins/NGT.AutoBroadcaster/NGT.AutoBroadcaster.dll` and that the server is the BepInEx start script. |
+| The load line appears, but the ready line does not | `ZNet` never became a dedicated server. This build does nothing on a normal client or a listen host. |
+| `EnableBroadcasting is false` | The master switch is off. |
+| `Skipping [Message XX]` | That section was not scheduled. The log states which value was invalid. The other messages still load. |
+| `skipped (no connected players)` | The minute matched, but nobody was connected. It will try again next hour. |
+| Alert works and chat does not | The client rejected the chat sender. Confirm the player-list anchor warning is absent. Crossplay clients that resolve communication permission asynchronously may drop the chat line; use `Alert` or `Both` for those players. |
+| `could not find ZNet.UpdatePlayerList` | Chat falls back to a center alert. The game's player-list method changed and the anchor needs an update. |
+
+Messages use the dedicated server's local clock. `ScheduledMinuteOfHour = 3` means xx:03 every hour, not three minutes after startup. Set `DebugLogging = true` only while diagnosing; it adds scheduler detail and is not written every tick.
+
+Manual dedicated-server check:
+
+1. Replace the plugin DLL and keep the existing config.
+2. Start the server and confirm the ready line and one `Scheduled ...` line per enabled message.
+3. Join with a vanilla client before the next configured minute.
+4. At that minute, confirm one alert or one `Server` chat line, not a duplicate.
+5. Leave and rejoin, or restart the server, and confirm the log has no player-list or chat exception and that the player count returns to the real number of connections.
 
 ## Project
 

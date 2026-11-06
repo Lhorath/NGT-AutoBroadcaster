@@ -4,6 +4,25 @@ All notable changes to **Nerdy Gamer Tools AutoBroadcaster** are documented here
 
 The project follows semantic versioning.
 
+## [2.1.0] - 2026-10-19
+
+### Fixed
+
+- Broadcasting no longer depends on `-batchmode`. The plugin now waits for `ZNet.IsServer()` and `ZNet.IsDedicated()`, which is true on the dedicated-server build and false on a normal client or listen host.
+- Chat delivery on Valheim 1.0.20. Clients discard `ChatMessage` unless the sender is in the current player list, and a synthetic id that is not a real platform user is rejected by the client permission check. Chat now sends from a temporary `Dedicated_Server` identity that is included in the player list for that send and removed before the connected-player count is used again.
+- A scheduled alert or chat line with nobody connected is logged once and skipped, instead of logging a successful send that no player received.
+- The one-time chat failure warning no longer hides later delivery errors.
+
+### Changed
+
+- Compatibility target is Valheim **1.0.20** (network version 41) with BepInExPack Valheim **5.4.2351**.
+- Center alerts still use vanilla `ShowMessage`. On 1.0.20 that message fades over about four seconds; `MessageTime` values above two seconds are still extended by resending it.
+- Startup logs when the dedicated server is actually ready, including each enabled message and its minute.
+
+### Compatibility
+
+- Existing `NGT_Autobroadcaster.cfg` keys are unchanged. No config migration is required.
+
 ## [2.0.0] - 2026-09-28
 
 ### Rebuilt

@@ -178,39 +178,15 @@ namespace NGT.AutoBroadcaster
                 5,
                 "Requested center-alert duration in seconds. Values above 2 are maintained by refreshing the vanilla alert.");
 
-            if (minute.Value < 0 || minute.Value > 59)
-            {
-                error = "ScheduledMinuteOfHour must be between 0 and 59.";
-                return false;
-            }
-
-            DeliveryMethod parsedMethod;
-            if (!Enum.TryParse(method.Value.Trim(), true, out parsedMethod))
-            {
-                error = "MessageType must be Alert, Chat, or Both.";
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(text.Value))
-            {
-                error = "MessageText cannot be empty.";
-                return false;
-            }
-
-            if (duration.Value < 1)
-            {
-                error = "MessageTime must be at least 1 second.";
-                return false;
-            }
-
-            message = new ScheduledMessage(
+            return MessageRules.TryCreate(
                 section,
                 enabled.Value,
-                minute.Value,
-                parsedMethod,
                 text.Value,
-                duration.Value);
-            return true;
+                method.Value,
+                minute.Value,
+                duration.Value,
+                out message,
+                out error);
         }
 
         private static string DefaultText(string section)
